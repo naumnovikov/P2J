@@ -10,5 +10,6 @@ namespace file_worker{
             ~FileWorker();
 
             void close();
+            std::string read();
     };
 }
