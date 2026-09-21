@@ -1,4 +1,4 @@
-#include "parser.h"
+#include "reader.h"
 
 // ============================================================
 // 1. Базовые заголовки (Packet++, Pcap++, Common++)
@@ -72,34 +72,36 @@
 // ============================================================
 #include "PayloadLayer.h"          // unknown layer / payload
 
-namespace parser {
-    Parser::Parser(const std::string& path) {
-        reader.open(path);
+#include <memory>
+
+namespace reader {
+    Reader::Reader(const std::string& path) {
+        reader = std::make_unique<pcpp::PcapFileReaderDevice>(path);
     }
 
-    Parser::~Parser() {
-        if (reader.isOpened()) {
+    Reader::~Reader() {
+        if (reader->isOpened()) {
             close();
         }
     }
 
-    void Parser::close() {
-        reader.close();
+    void Reader::close() {
+        reader->close();
     }
 
-    std::string Parser::getParse(){
-        if (!reader.isOpened()) {
-            return "";
+    pcapVector Reader::getData(){
+        if (!reader->isOpened()) {
+            return {};
         }
-        // Нужно парсить сразу разбирая все на поля чтобы удобно было в json засовывать
-        std::string parsedData;
+
+        pcapVector readData;
         pcpp::RawPacket rawPacket;
-        while (reader.getNextPacket(rawPacket)){
-            pcapWriter.writePacket(rawPacket);
+        while (reader->getNextPacket(rawPacket)){
             pcpp::Packet parsedPacket(&rawPacket);
-            parsedData += parsedPacket.toString();
+            readData.push_back(parsedPacket.toString());
         }
-        return parsedData;
+
+        return readData;
     }
 
-}
+} // namespace reader
