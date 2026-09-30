@@ -89,16 +89,49 @@ namespace reader {
         reader->close();
     }
 
-    pcapVector Reader::getData(){
+    jsonVector Reader::getData(){
         if (!reader->isOpened()) {
             return {};
         }
 
-        pcapVector readData;
+        jsonVector readData;
         pcpp::RawPacket rawPacket;
-        while (reader->getNextPacket(rawPacket)){
+        while (reader->getNextPacket(rawPacket)) {
             pcpp::Packet parsedPacket(&rawPacket);
-            readData.push_back(parsedPacket.toString());
+
+            // Получаем слои напрямую через getLayerOfType
+            pcpp::EthLayer* ethLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
+            pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
+            pcpp::TcpLayer* tcpLayer = parsedPacket.getLayerOfType<pcpp::TcpLayer>();
+            pcpp::HttpRequestLayer* httpLayer = parsedPacket.getLayerOfType<pcpp::HttpRequestLayer>();
+
+            // Теперь можно строить JSON из полей этих объектов
+            json j;
+            if (ethLayer) {
+                j["ethernet"]["src"] = ethLayer->getSrcMac().toString();
+                j["ethernet"]["dst"] = ethLayer->getDstMac().toString();
+            }
+            if (ipLayer) {
+                j["ipv4"]["src"] = ipLayer->getSrcIPv4Address().toString();
+                j["ipv4"]["dst"] = ipLayer->getDstIPv4Address().toString();
+                j["ipv4"]["ttl"] = ipLayer->getIPv4Header()->timeToLive;
+                j["ipv4"]["protocol"] = ipLayer->getIPv4Header()->protocol;
+            }
+            if (tcpLayer) {
+                j["tcp"]["src_port"] = tcpLayer->getSrcPort();
+                j["tcp"]["dst_port"] = tcpLayer->getDstPort();
+                j["tcp"]["seq"] = tcpLayer->getTcpHeader()->sequenceNumber;
+                j["tcp"]["ack"] = tcpLayer->getTcpHeader()->ackNumber;
+                j["tcp"]["flags"] = tcpLayer->getTcpHeader()->flags; // или разобрать по битам
+            }
+            if (httpLayer) {
+                j["http"]["method"] = httpLayer->getFirstLine().getMethod();
+                j["http"]["uri"] = httpLayer->getFirstLine().getUri();
+                j["http"]["version"] = httpLayer->getFirstLine().getVersion();
+                j["http"]["host"] = httpLayer->getFieldValue("Host");
+            }
+
+            readData.push_back(j);
         }
 
         return readData;
