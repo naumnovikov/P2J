@@ -8,6 +8,6 @@ namespace writer{
 
     class Writer{
         public:
-            void createJSONFile(const jsonVector& jsonData);
+            void createReadyJSONFile(const jsonVector& jsonData);
     };
 }   // namespace writer

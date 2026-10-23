@@ -1,20 +1,33 @@
 #include "writer.h"
+
 #include <fstream>
+#include <stdexcept>
 
-namespace writer{
-    void Writer::createJSONFile(const jsonVector& jsonData) {
-        json root;
-        root["meta"] = {
-            {"source_file", "capture.pcap"},
-            {"captured_at", "2026-09-30T12:00:00Z"},
-            {"packet_count", jsonData.size()}
-        };
-        root["packets"] = json::array();
-        for (auto& j : jsonData)
-            root["packets"].push_back(std::move(j));
+namespace writer {
 
-        std::ofstream out("packets.json");
-        out << root.dump(2);
-        close(out);
+void Writer::createReadyJSONFile(
+    const jsonVector& jsonData,
+    const std::string& outputFile,
+    const std::string& sourceFile) {
+    json root = json::object();
+    root["meta"] = {
+        {"source_file", sourceFile},
+        {"captured_at", "2026-09-30T12:00:00Z"},
+        {"packet_count", static_cast<int>(jsonData.size())}
+    };
+
+    root["packets"] = json::array();
+    for (const auto& packet : jsonData) {
+        root["packets"].push_back(packet);
     }
-}   // namespace writer
+
+    std::ofstream out(outputFile);
+    if (!out.is_open()) {
+        throw std::runtime_error("Failed to open output file: " + outputFile);
+    }
+
+    out << root.dump(2);
+    out.close();
+}
+
+} // namespace writer
